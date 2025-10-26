@@ -364,10 +364,13 @@ func (f *FFMpeg) hwApplyScaleTemplate(sargs string, codec VideoCodec, match []in
 	case VideoCodecM264:
 		template = "scale_vt=$value"
 	case VideoCodecRK264:
-		// Rockchip fallback chain for maximum compatibility:
-		// RGA scale → system memory → upload → rkmpp encoder.
-		// This avoids hwmap(rkrga→rkmpp) failures (-38/-12) seen on some builds.
-		template = "scale_rkrga=$value:format=nv12,hwdownload,format=nv12,hwupload"
+		// The original filter chain is a fallback for maximum compatibility:
+		// "scale_rkrga=$value:format=nv12,hwdownload,format=nv12,hwupload"
+		// It avoids hwmap(rkrga→rkmpp) failures (-38/-12) seen on some builds
+		// by downloading the scaled frame to system RAM and re-uploading it.
+		// The filter chain below uses a zero-copy approach, passing the hardware-scaled
+		// frame directly to the encoder. This is more efficient but may be less stable.
+		template = "scale_rkrga=$value"
 	default:
 		return VideoFilter(sargs)
 	}
